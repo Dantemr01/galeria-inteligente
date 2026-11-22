@@ -1,4 +1,4 @@
-# Galería Inteligente en AWS (versión sencilla)
+# Galería Inteligente en AWS 
 
 Aplicación web donde subes una foto y **Amazon Rekognition la etiqueta sola** (perro, planta,
 auto…). Las etiquetas se traducen al español y puedes buscar tus fotos por etiqueta.
@@ -40,7 +40,7 @@ pruebas/resiliencia.py pruebas de resistencia contra AWS real
 1. **Requisitos:** Python 3.10 o superior, Git y acceso a AWS Academy Learner Lab.
 2. **Instalar:**
    ```bash
-   git clone https://github.com/<usuario>/galeria-inteligente.git
+   git clone https://github.com/Dantemr01/galeria-inteligente.git
    cd galeria-inteligente
    pip install -r requirements.txt
    ```
@@ -68,6 +68,6 @@ python pruebas/resiliencia.py restaurar
 
 ## Equipo
 - Dante Yael Macías Rentería
-- _(segundo integrante)_
+- Carlos Alberto Larios Hernandez
 
 Profesor: Víctor Hugo Vega Fregoso
