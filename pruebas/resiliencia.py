@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pruebas de Resistencia ("demuéstrame que no se rompe").
+Pruebas de Resistencia.
 
 Cada escenario rompe una pieza a propósito, muestra qué pasa y la repara.
 La bitácora se guarda en pruebas/resultados/ como evidencia.
