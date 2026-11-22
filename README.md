@@ -1,0 +1,73 @@
+# Galería Inteligente en AWS (versión sencilla)
+
+Aplicación web donde subes una foto y **Amazon Rekognition la etiqueta sola** (perro, planta,
+auto…). Las etiquetas se traducen al español y puedes buscar tus fotos por etiqueta.
+
+> Proyecto final del módulo **Computación Sustentable** — Universidad de Guadalajara, CUTonalá.
+
+Usa solo **4 servicios de AWS** y toda la infraestructura se crea con un script de Python (boto3).
+
+## Arquitectura
+
+```
+ Navegador ──1. carga la web──▶ S3 (sitio web)
+     │
+     ├──2. API (Function URL)──▶ Lambda ──▶ DynamoDB   (fotos y etiquetas)
+     │                             │
+     ├──3. sube la foto (PUT)──▶ S3 (fotos, privado)
+     │                             │
+     └──4. "analizar"──────────▶ Lambda ──▶ Rekognition (detecta etiquetas)
+```
+
+| Servicio | Función |
+|---|---|
+| **S3** | Un bucket público para la página web y otro privado y versionado para las fotos |
+| **Lambda** | Todo el backend en una función, expuesta con una Function URL |
+| **DynamoDB** | Guarda título, estado y etiquetas de cada foto |
+| **Rekognition** | Detecta qué hay en cada foto |
+
+## Estructura
+
+```
+infra/desplegar.py     crea todo        infra/destruir.py   borra todo
+lambda/app.py          backend          web/                página (HTML, CSS, JS)
+pruebas/test_lambda.py 10 pruebas unitarias (sin AWS)
+pruebas/resiliencia.py pruebas de resistencia contra AWS real
+```
+
+## Guía de despliegue
+
+1. **Requisitos:** Python 3.10 o superior, Git y acceso a AWS Academy Learner Lab.
+2. **Instalar:**
+   ```bash
+   git clone https://github.com/<usuario>/galeria-inteligente.git
+   cd galeria-inteligente
+   pip install -r requirements.txt
+   ```
+3. **Credenciales:** en el Learner Lab pulsa *Start Lab*, luego *AWS Details* y después *AWS CLI: Show*.
+   Copia el bloque a `~/.aws/credentials` (Windows: `C:\Users\<tú>\.aws\credentials`).
+4. **Desplegar:**
+   ```bash
+   python infra/desplegar.py
+   ```
+   En menos de un minuto imprime la URL del sitio web.
+5. **Probar:** abre la URL, sube una foto y en unos segundos aparecen sus etiquetas.
+6. **Borrar todo al terminar:** `python infra/destruir.py`
+
+Las credenciales del Learner Lab caducan en unas 4 h. Si aparece `ExpiredToken`, repite el paso 3.
+
+## Pruebas
+
+```bash
+python -m unittest discover -s pruebas -v                  # unitarias, sin AWS
+python pruebas/resiliencia.py rekognition-falla --imagen perro.jpg
+python pruebas/resiliencia.py base-caida
+python pruebas/resiliencia.py carga --imagen perro.jpg --n 10
+python pruebas/resiliencia.py restaurar
+```
+
+## Equipo
+- Dante Yael Macías Rentería
+- _(segundo integrante)_
+
+Profesor: Víctor Hugo Vega Fregoso

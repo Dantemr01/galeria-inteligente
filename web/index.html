@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galería Inteligente · AWS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <span class="logo" aria-hidden="true">◈</span>
+      <div>
+        <h1>Galería Inteligente</h1>
+        <p>Sube una foto y AWS la etiqueta sola</p>
+      </div>
+    </div>
+    <div id="salud" class="salud" title="Estado de los servicios">
+      <span class="punto"></span><span id="salud-texto">Revisando…</span>
+    </div>
+  </header>
+
+  <div id="aviso" class="aviso oculto" role="alert"></div>
+
+  <main>
+    <section class="panel subir">
+      <h2>Subir foto</h2>
+      <form id="form-subir">
+        <label id="zona" class="zona" for="archivo">
+          <input id="archivo" type="file" accept="image/jpeg,image/png" hidden>
+          <img id="vista-previa" class="oculto" alt="Vista previa">
+          <span id="zona-texto">Arrastra una imagen aquí o <u>elige un archivo</u><br><small>JPG o PNG, máximo 5 MB</small></span>
+        </label>
+        <input id="titulo" type="text" maxlength="80" placeholder="Título (opcional)">
+        <div id="progreso" class="progreso oculto"><div></div></div>
+        <button id="btn-subir" type="submit" disabled>Subir y analizar</button>
+      </form>
+      <div class="flujo">
+        <h3>¿Qué pasa al subir?</h3>
+        <ol>
+          <li>La <b>Lambda</b> registra la foto en <b>DynamoDB</b> y da una URL segura.</li>
+          <li>El navegador sube la imagen directo a <b>S3</b>.</li>
+          <li>La Lambda le pide a <b>Rekognition</b> que la analice.</li>
+          <li>Las etiquetas se guardan y aparecen aquí.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="panel galeria">
+      <div class="galeria-encabezado">
+        <h2>Fotos <span id="contador" class="contador">0</span></h2>
+        <input id="buscar" type="search" placeholder="Buscar por etiqueta (perro, planta…)">
+      </div>
+      <div id="chips" class="chips"></div>
+      <div id="rejilla" class="rejilla"></div>
+      <p id="vacio" class="vacio oculto">Aún no hay fotos. ¡Sube la primera!</p>
+    </section>
+  </main>
+
+  <dialog id="detalle">
+    <button class="cerrar" aria-label="Cerrar">×</button>
+    <img id="detalle-img" alt="">
+    <div class="detalle-info">
+      <h3 id="detalle-titulo"></h3>
+      <p id="detalle-meta" class="meta"></p>
+      <ul id="detalle-etiquetas" class="barras"></ul>
+      <button id="btn-reintentar" class="oculto">Reintentar análisis</button>
+      <button id="btn-eliminar" class="peligro">Eliminar foto</button>
+    </div>
+  </dialog>
+
+  <footer>Proyecto de Computación Sustentable · CUTonalá, UdeG · S3 · Lambda · DynamoDB · Rekognition</footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
