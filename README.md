@@ -56,7 +56,7 @@ pruebas/resiliencia.py pruebas de resistencia contra AWS real
 
 Las credenciales del Learner Lab caducan en unas 4 h. Si aparece `ExpiredToken`, repite el paso 3.
 
-El Script de despliegue en AWS: infra/desplegar.py (crea toda la infraestructura con boto3) y para borrarla: infra/destruir.py
+El Script de Interacción con los servicios en AWS: infra/desplegar.py (crea toda la infraestructura con boto3) y para borrarla: infra/destruir.py
 
 ## Pruebas
 
