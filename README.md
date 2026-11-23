@@ -31,7 +31,7 @@ Usa solo **4 servicios de AWS** y toda la infraestructura se crea con un script 
 ```
 infra/desplegar.py     crea todo        infra/destruir.py   borra todo
 lambda/app.py          backend          web/                página (HTML, CSS, JS)
-pruebas/test_lambda.py 10 pruebas unitarias (sin AWS)
+pruebas/test_lambda.py 13 pruebas unitarias (sin AWS)
 pruebas/resiliencia.py pruebas de resistencia contra AWS real
 ```
 
@@ -50,13 +50,23 @@ pruebas/resiliencia.py pruebas de resistencia contra AWS real
    ```bash
    python infra/desplegar.py
    ```
-   En menos de un minuto imprime la URL del sitio web.
-5. **Probar:** abre la URL, sube una foto y en unos segundos aparecen sus etiquetas.
+   En menos de un minuto imprime la URL del sitio web y la **clave de acceso** de la galería
+   (también queda en `salida_despliegue.json`, que no se sube a GitHub). Para elegir tu propia
+   clave: `python infra/desplegar.py --clave MiClave`.
+5. **Probar:** abre la URL, escribe la clave de acceso, sube una foto y en unos segundos aparecen sus etiquetas.
 6. **Borrar todo al terminar:** `python infra/destruir.py`
 
 Las credenciales del Learner Lab caducan en unas 4 h. Si aparece `ExpiredToken`, repite el paso 3.
 
+HEAD
 El Script de Interacción con los servicios en AWS: infra/desplegar.py (crea toda la infraestructura con boto3) y para borrarla: infra/destruir.py
+
+## Seguridad
+
+- La galería pide una **clave de acceso**; la Lambda rechaza con 401 toda petición sin ella (excepto `/salud`).
+- La Lambda tiene un **tope de 5 ejecuciones simultáneas** para limitar abusos y costos.
+- El bucket de fotos es privado y cifrado; las fotos solo se ven con URLs que expiran en 1 hora.
+  bb795f1 (Seguridad: clave de acceso y tope de concurrencia)
 
 ## Pruebas
 

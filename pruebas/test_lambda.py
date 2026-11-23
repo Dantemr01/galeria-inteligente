@@ -72,14 +72,15 @@ exc.ClientError, exc.BotoCoreError = ClientError, type("BotoCoreError", (Excepti
 sys.modules.update({"boto3": boto3, "botocore": types.ModuleType("botocore"),
                     "botocore.config": config, "botocore.exceptions": exc})
 
-os.environ.update(BUCKET_FOTOS="bucket", TABLA_FOTOS="tabla")
+os.environ.update(BUCKET_FOTOS="bucket", TABLA_FOTOS="tabla", CLAVE_ACCESO="clave-secreta")
 spec = importlib.util.spec_from_file_location("app", os.path.join(RAIZ, "lambda", "app.py"))
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
 
 
-def pedir(metodo, ruta, cuerpo=None, query=None):
-    r = app.handler({"requestContext": {"http": {"method": metodo}}, "rawPath": ruta,
+def pedir(metodo, ruta, cuerpo=None, query=None, clave="clave-secreta"):
+    headers = {"x-clave-acceso": clave} if clave is not None else {}
+    r = app.handler({"requestContext": {"http": {"method": metodo}}, "rawPath": ruta, "headers": headers,
                      "body": json.dumps(cuerpo) if cuerpo is not None else None,
                      "queryStringParameters": query}, None)
     return r["statusCode"], json.loads(r["body"])
@@ -154,6 +155,25 @@ class PruebasGaleria(unittest.TestCase):
         codigo, r = pedir("GET", "/fotos")
         self.assertEqual(codigo, 503)
         self.assertIn("no está disponible", r["error"])
+
+    # ---------------- seguridad
+    def test_sin_clave_o_clave_incorrecta_responde_401(self):
+        self.crear()
+        self.assertEqual(pedir("GET", "/fotos", clave=None)[0], 401)
+        self.assertEqual(pedir("GET", "/fotos", clave="otra")[0], 401)
+        self.assertEqual(pedir("POST", "/fotos", {"contentType": "image/jpeg", "size": 10}, clave="")[0], 401)
+
+    def test_salud_es_publica_y_no_expone_fotos(self):
+        codigo, r = pedir("GET", "/salud", clave=None)
+        self.assertEqual(codigo, 200)
+        self.assertNotIn("fotos", r)
+
+    def test_sin_clave_configurada_se_bloquea_todo(self):
+        os.environ["CLAVE_ACCESO"] = ""
+        try:
+            self.assertEqual(pedir("GET", "/fotos", clave="")[0], 401)
+        finally:
+            os.environ["CLAVE_ACCESO"] = "clave-secreta"
 
     def test_salud_ok(self):
         self.assertEqual(pedir("GET", "/salud"), (200, {"estado": "ok", "componentes": {

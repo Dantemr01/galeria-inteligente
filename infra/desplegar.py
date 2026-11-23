@@ -8,6 +8,9 @@ Uso:
     python infra/desplegar.py
     python infra/desplegar.py --region us-east-1 --prefijo galeria
     python infra/desplegar.py --rol-arn arn:aws:iam::123:role/MiRol   # cuenta que no es Academy
+    python infra/desplegar.py --clave MiClaveSecreta                 # elegir la clave de acceso
+
+La primera vez genera una clave de acceso aleatoria y la imprime al final.
 
 Se puede ejecutar varias veces: reutiliza lo que ya existe y actualiza el código.
 """
@@ -16,6 +19,7 @@ import io
 import json
 import mimetypes
 import os
+import secrets
 import sys
 import time
 import zipfile
@@ -127,10 +131,19 @@ def empaquetar():
     return buffer.getvalue()
 
 
-def desplegar_lambda(sesion, n, rol_arn):
+def clave_existente(sesion, n):
+    """Reutiliza la clave ya configurada para no cambiarla en cada despliegue."""
+    try:
+        cfg = sesion.client("lambda").get_function_configuration(FunctionName=n["lambda"])
+        return cfg.get("Environment", {}).get("Variables", {}).get("CLAVE_ACCESO")
+    except ClientError:
+        return None
+
+
+def desplegar_lambda(sesion, n, rol_arn, clave):
     lam = sesion.client("lambda")
     variables = {"Variables": {"TABLA_FOTOS": n["tabla"], "BUCKET_FOTOS": n["bucket_fotos"],
-                               "SIMULAR_FALLA": "false"}}
+                               "SIMULAR_FALLA": "false", "CLAVE_ACCESO": clave}}
     try:
         lam.get_function(FunctionName=n["lambda"])
         lam.update_function_code(FunctionName=n["lambda"], ZipFile=empaquetar())
@@ -151,7 +164,8 @@ def desplegar_lambda(sesion, n, rol_arn):
         ok(f"Lambda {n['lambda']} creada")
 
     cors = {"AllowOrigins": [n["url_web"], "http://localhost:8000"],
-            "AllowMethods": ["GET", "POST", "DELETE"], "AllowHeaders": ["content-type"], "MaxAge": 3600}
+            "AllowMethods": ["GET", "POST", "DELETE"], "AllowHeaders": ["content-type", "x-clave-acceso"],
+            "MaxAge": 3600}
     try:
         url = lam.create_function_url_config(FunctionName=n["lambda"], AuthType="NONE", Cors=cors)["FunctionUrl"]
     except ClientError as e:
@@ -172,6 +186,15 @@ def desplegar_lambda(sesion, n, rol_arn):
                 raise
         except Exception:  # noqa: BLE001 - boto3 antiguo sin InvokedViaFunctionUrl
             print("   ⚠ Actualiza boto3 (pip install -U boto3) si la URL responde 403")
+    # Tope de concurrencia: si alguien abusa de la API, como máximo corren 5 copias a la vez
+    try:
+        lam.put_function_concurrency(FunctionName=n["lambda"], ReservedConcurrentExecutions=5)
+        ok("Concurrencia limitada a 5 ejecuciones simultáneas")
+    except ClientError as e:
+        # Learner Lab ya limita la cuenta a unas 10 ejecuciones y no deja reservar menos
+        print(f"   ⚠ No se pudo fijar el tope de concurrencia ({codigo(e)}); "
+              "la cuenta ya tiene su propio límite")
+
     url = url.rstrip("/")
     ok(f"Function URL: {url}")
     return url
@@ -202,6 +225,7 @@ def publicar_web(sesion, n, api_url):
 def main():
     p = argumentos("Despliega la Galería Inteligente en AWS")
     p.add_argument("--rol-arn", help="Rol para la Lambda. Default: LabRole de AWS Academy")
+    p.add_argument("--clave", help="Clave de acceso a la galería. Default: la actual o una aleatoria")
     args = p.parse_args()
     inicio = time.time()
     sesion, n = conectar(args)
@@ -213,11 +237,13 @@ def main():
     paso(2, "S3 para fotos")
     crear_bucket_fotos(sesion, n)
     paso(3, "Lambda con Function URL")
-    api_url = desplegar_lambda(sesion, n, rol)
+    clave = args.clave or clave_existente(sesion, n) or secrets.token_urlsafe(9)
+    api_url = desplegar_lambda(sesion, n, rol, clave)
     paso(4, "Sitio web en S3")
     publicar_web(sesion, n, api_url)
     paso(5, "Guardando datos del despliegue")
     n["api_url"] = api_url
+    n["clave"] = clave  # el archivo está en .gitignore: la clave no se sube a GitHub
     with open(SALIDA, "w", encoding="utf-8") as f:
         json.dump(n, f, indent=2)
     ok("salida_despliegue.json")
@@ -225,6 +251,7 @@ def main():
     print(f"\nListo en {int(time.time() - inicio)} s")
     print(f"  Sitio web: {n['url_web']}")
     print(f"  API:       {api_url}/salud")
+    print(f"  Clave de acceso: {clave}   (compártela solo con tu equipo)")
 
 
 if __name__ == "__main__":

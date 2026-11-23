@@ -9,11 +9,16 @@ Se expone con una Lambda Function URL (no se necesita API Gateway).
     POST   /fotos/{id}/analizar  -> analiza la foto con Rekognition y guarda las etiquetas
     DELETE /fotos/{id}           -> borra la foto de S3 y DynamoDB
 
+Seguridad:
+  * Todas las rutas (excepto /salud) exigen la cabecera "x-clave-acceso" con la clave
+    del equipo, guardada en la variable de entorno CLAVE_ACCESO.
+
 Resiliencia:
   * Rekognition y DynamoDB se llaman con reintentos automáticos (modo "standard" de botocore).
   * Si el análisis falla, la foto queda en estado ERROR y se puede reintentar sin volver a subirla.
   * Si un servicio no responde, la API contesta 503 con un mensaje claro en vez de "tronar".
 """
+import hmac
 import json
 import os
 import re
@@ -164,6 +169,16 @@ def eliminar(foto_id):
     return respuesta(200, {"eliminada": foto_id})
 
 
+# ------------------------------------------------------------------ seguridad
+def autorizado(evento):
+    """Compara la clave recibida con la configurada en tiempo constante (evita ataques de tiempo)."""
+    esperada = os.environ.get("CLAVE_ACCESO", "")
+    if not esperada:  # sin clave configurada no se permite nada (falla cerrada)
+        return False
+    recibida = (evento.get("headers") or {}).get("x-clave-acceso", "")
+    return hmac.compare_digest(recibida.encode(), esperada.encode())
+
+
 # ------------------------------------------------------------------ entrada
 def handler(evento, _contexto):
     metodo = evento.get("requestContext", {}).get("http", {}).get("method", "GET")
@@ -171,8 +186,11 @@ def handler(evento, _contexto):
     query = evento.get("queryStringParameters") or {}
     m = re.fullmatch(r"/fotos/([0-9a-f]{32})(/analizar)?", ruta)
     try:
-        if metodo == "GET" and ruta == "/salud":
+        if metodo == "GET" and ruta == "/salud":  # pública: no expone datos de usuarios
             return salud()
+        if not autorizado(evento):
+            print(json.dumps({"nivel": "AVISO", "ruta": ruta, "detalle": "clave de acceso incorrecta"}))
+            return error(401, "Clave de acceso incorrecta")
         if metodo == "GET" and ruta == "/fotos":
             return listar(query)
         if metodo == "POST" and ruta == "/fotos":

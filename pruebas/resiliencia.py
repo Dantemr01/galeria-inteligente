@@ -50,12 +50,17 @@ def guardar(nombre):
 def http(metodo, ruta, cuerpo=None):
     datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
     req = urllib.request.Request(S["api_url"] + ruta, data=datos, method=metodo,
-                                 headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return r.status, json.loads(r.read() or b"{}")
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"{}")
+                                 headers={"Content-Type": "application/json",
+                                          "x-clave-acceso": S.get("clave", "")})
+    for intento in range(4):  # 429 = tope de concurrencia alcanzado: esperar y reintentar
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return r.status, json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and intento < 3:
+                time.sleep(0.5 * 2 ** intento)
+                continue
+            return e.code, json.loads(e.read() or b"{}")
 
 
 def subir(imagen, titulo):

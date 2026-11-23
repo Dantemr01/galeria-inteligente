@@ -15,8 +15,11 @@
         <p>Sube una foto y AWS la etiqueta sola</p>
       </div>
     </div>
-    <div id="salud" class="salud" title="Estado de los servicios">
-      <span class="punto"></span><span id="salud-texto">Revisando…</span>
+    <div class="barra-derecha">
+      <div id="salud" class="salud" title="Estado de los servicios">
+        <span class="punto"></span><span id="salud-texto">Revisando…</span>
+      </div>
+      <button id="btn-salir" class="secundario oculto" title="Olvidar la clave en este navegador">Salir</button>
     </div>
   </header>
 
@@ -56,6 +59,17 @@
       <p id="vacio" class="vacio oculto">Aún no hay fotos. ¡Sube la primera!</p>
     </section>
   </main>
+
+  <dialog id="acceso">
+    <form id="form-acceso" class="acceso" method="dialog">
+      <span class="logo" aria-hidden="true">◈</span>
+      <h3>Galería privada</h3>
+      <p>Escribe la clave de acceso del equipo para ver y subir fotos.</p>
+      <input id="clave" type="password" autocomplete="current-password" placeholder="Clave de acceso" required>
+      <p id="acceso-error" class="acceso-error oculto">Clave incorrecta. Intenta de nuevo.</p>
+      <button type="submit">Entrar</button>
+    </form>
+  </dialog>
 
   <dialog id="detalle">
     <button class="cerrar" aria-label="Cerrar">×</button>

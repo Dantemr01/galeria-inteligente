@@ -6,7 +6,23 @@
   const MAX_BYTES = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
 
-  const estado = { fotos: [], filtro: "", archivo: null, seleccionada: null };
+  const estado = { fotos: [], filtro: "", archivo: null, seleccionada: null, clave: leerClave() };
+
+  // ------------------------------------------------------------ clave de acceso
+  // Se guarda solo durante la sesión del navegador (se borra al cerrar la pestaña).
+  function leerClave() {
+    try { return sessionStorage.getItem("galeria-clave") || ""; } catch { return ""; }
+  }
+  function guardarClave(valor) {
+    estado.clave = valor;
+    try { valor ? sessionStorage.setItem("galeria-clave", valor) : sessionStorage.removeItem("galeria-clave"); } catch { /* sin almacenamiento */ }
+  }
+  function pedirClave(incorrecta = false) {
+    $("acceso-error").classList.toggle("oculto", !incorrecta);
+    $("btn-salir").classList.add("oculto");
+    if (!$("acceso").open) $("acceso").showModal();
+    $("clave").focus();
+  }
 
   // ------------------------------------------------------------ utilidades
   const escapar = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => (
@@ -27,10 +43,16 @@
       try {
         const r = await fetch(API + ruta, {
           ...opciones,
-          headers: { "Content-Type": "application/json", ...(opciones.headers || {}) },
+          headers: { "Content-Type": "application/json", "x-clave-acceso": estado.clave, ...(opciones.headers || {}) },
         });
         const datos = await r.json().catch(() => ({}));
         if (r.ok) return datos;
+        if (r.status === 401) {
+          guardarClave("");
+          pedirClave(true);
+          throw Object.assign(new Error("Clave de acceso incorrecta"), { definitivo: true });
+        }
+        if (r.status === 429) { ultimoError = new Error("Hay muchas peticiones; reintentando…"); await new Promise((ok) => setTimeout(ok, 500 * 2 ** i)); continue; }
         if (r.status < 500) throw Object.assign(new Error(datos.error || `Error ${r.status}`), { definitivo: true });
         ultimoError = new Error(datos.error || `El servidor respondió ${r.status}`);
       } catch (e) {
@@ -247,7 +269,19 @@
     $("btn-reintentar").addEventListener("click", reintentarSeleccionada);
   }
 
+  function entrar(ev) {
+    ev.preventDefault();
+    guardarClave($("clave").value.trim());
+    $("clave").value = "";
+    $("acceso").close();
+    $("btn-salir").classList.remove("oculto");
+    cargarFotos();
+  }
+
   enlazar();
+  $("form-acceso").addEventListener("submit", entrar);
+  $("acceso").addEventListener("cancel", (e) => e.preventDefault()); // no se puede cerrar sin clave
+  $("btn-salir").addEventListener("click", () => { guardarClave(""); estado.fotos = []; pintar(); pedirClave(); });
   if (!API) {
     avisar("Falta configurar la URL de la API (ejecuta python infra/desplegar.py).", 0);
     $("salud").className = "salud caido";
@@ -256,5 +290,5 @@
   }
   revisarSalud();
   setInterval(revisarSalud, 30000);
-  cargarFotos();
+  if (estado.clave) { $("btn-salir").classList.remove("oculto"); cargarFotos(); } else { pedirClave(); }
 })();

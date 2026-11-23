@@ -1,2 +1,1 @@
-// Este archivo lo sobrescribe infra/desplegar.py con la URL real de API Gateway.
-window.GALERIA_CONFIG = { apiUrl: "" };
+window.GALERIA_CONFIG = {"apiUrl": "https://qwkdfy5ybdr523e7xruhlynjqa0yizwf.lambda-url.us-east-1.on.aws"};
